@@ -1,0 +1,116 @@
+---
+title: "Iris Classification"
+author: Anthony Ruiz
+output: 
+     revealjs::revealjs_presentation:
+          fig_width: 6
+          fig_height: 4
+          theme: blood
+          transition: concave
+          center: true
+---
+
+## Motivation
+
+<small>The motivation behind this project is to demonstrate some of my data science and R knowledge. As a disclaimer, I understand that business related data/questions are much more difficult to work on, however I unfortunately cant use business cases to publicly </small>
+
+
+## Slide with Bullets
+- This project/presentation has been created with the reveal package
+- Bullet 2
+- Bullet 3
+
+
+## Slide with R Code and Output
+```{r data import, message = FALSE}
+iris_data <- read.csv("C:/Users/gexajr1/Desktop/Iris.csv")
+```
+
+
+## Packages used for modeling
+```{r package installation, message = FALSE, warning = FALSE, fig.align='center'}
+library(tidyverse)
+library(knitr)
+library(caret)
+library(rattle)
+library(dadva)
+library(GGally)
+library(stats)
+```
+
+
+## Data Exploration
+```{r, message = FALSE, fig.align='center'}
+ggpairs(iris_data[,2:6],mapping =aes(color = Species)) +
+     theme_dadva()
+```
+
+##Summary Statistics
+```{r Summary Statistics}
+kable(summary(iris_data), align = 'c', caption = "Summary Statistics of Iris Data")
+```
+
+## Data Preperation
+We want to split our data into training/testing datasets. We will use the training data to train the model and the testing set to test how our model performs on out of sample data.
+
+```{r Data Processing}
+set.seed(23)
+iris_training <- sample_frac(iris_data,.85)
+iris_testing <- setdiff(iris_data,iris_training)
+```
+
+
+## Recursive Partition (Decision Tree)
+```{r Recursive Partion, fig.align = 'center'}
+
+set.seed(23)
+dt <- train(Species ~ SepalLengthCm + SepalWidthCm + PetalLengthCm + PetalWidthCm,
+            method = "rpart", data = iris_training)
+
+dt
+```
+
+## Model Output
+```{r Decision Tree Output, fig.align = 'center'}
+fancyRpartPlot(dt$finalModel, main = "Iris Classification - Recursive Partition Model", sub = "")
+```
+
+
+## Out of Sample Prediction
+```{r}
+dt_predictions <- predict(dt, newdata = iris_testing)
+confusionMatrix(dt_predictions, iris_testing$Species)
+```
+
+
+## Viewing Incorrectly Classified Predictions
+```{r}
+test <- iris_testing %>%
+          bind_cols(data.frame(dt_predictions)) %>%
+          mutate(accurate_prediction = ifelse(Species == dt_predictions,"Correct","Incorrect"))
+          
+
+ggplot(data = test) +
+     geom_point(mapping = aes(x = PetalLengthCm, y = PetalWidthCm, color = accurate_prediction))+
+     theme_dadva()
+```
+
+
+##
+```{r Kmeans Scree Plot, fig.align ='center', fig.height=6, fig.width=10}
+
+kmean_cluster <- data.frame(1)
+
+for(i in 1:15){
+     kmean_cluster[i] <-  kmeans(iris_data[2:4], centers = i, nstart = 20)$tot.withinss
+}
+
+kmean_cluster <- kmean_cluster %>%
+                 gather(1,"wss")
+
+ggplot(data = kmean_cluster) +
+     geom_line(mapping = aes(y = wss, x = 1:15)) +
+     labs(y = "Within Sum of Squares", x = "Cluster Size", Main = "Scree Plot to Determine Optimal Cluster Size") +
+     theme_dadva()
+
+```
